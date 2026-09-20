@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MGRS Field Nav</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/mgrs@2.2.0/dist/mgrs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
+
+  <style>
+    :root {
+      --bg: #080b0d;
+      --panel: #0d1215;
+      --panel2: #11181c;
+      --line: #253138;
+      --text: #d9e2e5;
+      --muted: #819198;
+      --accent: #b8d66a;
+      --accent2: #d9ee91;
+      --danger: #e27878;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top right, rgba(184,214,106,.07), transparent 30%),
+        var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      min-height: 100vh;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      padding: 18px 20px;
+      background: rgba(8,11,13,.96);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--accent);
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 3px;
+      letter-spacing: 1px;
+    }
+
+    .status {
+      color: var(--accent);
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: auto;
+      padding: 24px 20px 60px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 18px;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, var(--panel2), var(--panel));
+      border: 1px solid var(--line);
+      padding: 20px;
+      border-radius: 4px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.18);
+    }
+
+    .panel.full {
+      grid-column: 1 / -1;
+    }
+
+    .panel-title {
+      color: var(--accent);
+      font-size: 11px;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 7px;
+    }
+
+    textarea,
+    input,
+    select {
+      width: 100%;
+      background: #080d10;
+      border: 1px solid var(--line);
+      color: var(--text);
+      padding: 12px;
+      border-radius: 3px;
+      outline: none;
+      font-size: 14px;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+      font-family: monospace;
+      letter-spacing: 1px;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--accent);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid var(--accent);
+      background: transparent;
+      color: var(--accent2);
+      padding: 11px 15px;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 1px;
+      border-radius: 3px;
+    }
+
+    button:hover {
+      background: rgba(184,214,106,.1);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #11150b;
+      font-weight: bold;
+    }
+
+    button.danger {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .result {
+      background: #080d10;
+      border: 1px solid var(--line);
+      padding: 18px;
+      min-height: 110px;
+    }
+
+    .result-value {
+      font-family: monospace;
+      font-size: clamp(20px, 4vw, 34px);
+      color: var(--accent2);
+      word-break: break-all;
+      letter-spacing: 1px;
+    }
+
+    .result-meta {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .metric {
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .metric-value {
+      margin-top: 5px;
+      font-size: 14px;
+      font-family: monospace;
+    }
+
+    .map {
+      min-height: 280px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(rgba(184,214,106,.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(184,214,106,.05) 1px, transparent 1px),
+        #080d10;
+      background-size: 40px 40px;
+      display: grid;
+      place-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .map::before,
+    .map::after {
+      content: "";
+      position: absolute;
+      background: rgba(184,214,106,.2);
+    }
+
+    .map::before {
+      width: 100%;
+      height: 1px;
+    }
+
+    .map::after {
+      height: 100%;
+      width: 1px;
+    }
+
+    .crosshair {
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--accent);
+      border-radius: 50%;
+      position: relative;
+      z-index: 2;
+      box-shadow: 0 0 20px rgba(184,214,106,.25);
+    }
+
+    .crosshair::before,
+    .crosshair::after {
+      content: "";
+      position: absolute;
+      background: var(--accent);
+    }
+
+    .crosshair::before {
+      width: 42px;
+      height: 1px;
+      left: -8px;
+      top: 13px;
+    }
+
+    .crosshair::after {
+      height: 42px;
+      width: 1px;
+      left: 13px;
+      top: -8px;
+    }
+
+    .map-label {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      font-family: monospace;
+      color: var(--muted);
+      font-size: 10px;
+      z-index: 3;
+    }
+
+    .weather-current {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .weather-main {
+      border: 1px solid var(--line);
+      background: #080d10;
+      padding: 18px;
+      grid-column: 1 / -1;
+    }
+
+    .temperature {
+      font-size: 42px;
+      color: var(--accent2);
+      font-weight: bold;
+    }
+
+    .condition {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 11px;
+      margin-top: 4px;
+    }
+
+    .weather-stat {
+      border: 1px solid var(--line);
+      padding: 12px;
+      background: #080d10;
+    }
+
+    .forecast {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+
+    .forecast-day {
+      border: 1px solid var(--line);
+      background: #080d10;
+      padding: 12px 8px;
+      min-width: 0;
+    }
+
+    .forecast-date {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .forecast-temp {
+      font-family: monospace;
+      color: var(--accent2);
+      font-size: 15px;
+    }
+
+    .forecast-rain {
+      color: var(--muted);
+      font-size: 10px;
+      margin-top: 8px;
+    }
+
+    .illumination {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .illum-card {
+      border: 1px solid var(--line);
+      background: #080d10;
+      padding: 14px;
+    }
+
+    .illum-card strong {
+      display: block;
+      font-family: monospace;
+      font-size: 16px;
+      color: var(--accent2);
+      margin-top: 6px;
+    }
+
+    .history {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      align-items: center;
+      padding: 11px 13px;
+      border: 1px solid var(--line);
+      background: #080d10;
+      cursor: pointer;
+    }
+
+    .history-item:hover {
+      border-color: var(--accent);
+    }
+
+    .history-coord {
+      font-family: monospace;
+      color: var(--accent2);
+      font-size: 12px;
+    }
+
+    .history-type {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .notice {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .error {
+      color: var(--danger);
+      font-size: 12px;
+      margin-top: 10px;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 1px;
+      padding: 20px;
+      border-top: 1px solid var(--line);
+    }
+
+    @media (max-width: 850px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .panel.full {
+        grid-column: auto;
+      }
+
+      .forecast {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .illumination {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 520px) {
+      main {
+        padding: 15px 12px 40px;
+      }
+
+      header {
+        padding: 14px 12px;
+      }
+
+      .header-inner {
+        align-items: flex-start;
+      }
+
+      .status {
+        display: none;
+      }
+
+      .form-grid,
+      .weather-current,
+      .result-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .illumination {
+        grid-template-columns: 1fr;
+      }
+
+      .forecast {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .panel {
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="logo">FN</div>
+      <div>
+        <h1>MGRS Field Nav</h1>
+        <div class="subtitle">Coordinate • Weather • Illumination</div>
+      </div>
+    </div>
+
+    <div class="status">● SYSTEM READY</div>
+  </div>
+</header>
+
+<main>
+
+  <div class="grid">
+
+    <!-- CONVERTER -->
+    <section class="panel">
+      <div class="panel-title">
+        <span>01 / Coordinate Converter</span>
+        <span>WGS84</span>
+      </div>
+
+      <div class="form-group">
+        <label for="mgrsInput">MGRS Coordinate</label>
+        <textarea id="mgrsInput" placeholder="Example: 48NUG9470000000">48NUG9470000000</textarea>
+      </div>
+
+      <div class="actions">
+        <button class="primary" onclick="convertMGRS()">MGRS → LAT/LON</button>
+        <button onclick="useExample()">LOAD EXAMPLE</button>
+      </div>
+
+      <div id="converterError" class="error"></div>
+
+      <div style="height:20px"></div>
+
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label for="latInput">Latitude</label>
+          <input id="latInput" type="number" step="any" value="1.3521">
+        </div>
+
+        <div class="form-group">
+          <label for="lonInput">Longitude</label>
+          <input id="lonInput" type="number" step="any" value="103.8198">
+        </div>
+
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label for="precision">MGRS Precision</label>
+          <select id="precision">
+            <option value="5">1 metre</option>
+            <option value="4">10 metres</option>
+            <option value="3">100 metres</option>
+            <option value="2">1 kilometre</option>
+            <option value="1">10 kilometres</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Datum</label>
+          <input value="WGS84" disabled>
+        </div>
+
+      </div>
+
+      <div class="actions">
+        <button class="primary" onclick="convertLatLon()">LAT/LON → MGRS</button>
+      </div>
+
+      <div id="latlonError" class="error"></div>
+    </section>
+
+
+    <!-- RESULT -->
+    <section class="panel">
+
+      <div class="panel-title">02 / Position Output</div>
+
+      <div class="result">
+
+        <div class="metric-label">MGRS</div>
+        <div id="resultMgrs" class="result-value">48NUG9470000000</div>
+
+        <div class="result-meta">
+
+          <div class="metric">
+            <div class="metric-label">Latitude</div>
+            <div id="resultLat" class="metric-value">1.352100°</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-label">Longitude</div>
+            <div id="resultLon" class="metric-value">103.819800°</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-label">Grid</div>
+            <div id="resultGrid" class="metric-value">48N</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-label">Status</div>
+            <div class="metric-value" style="color:var(--accent)">VALID</div>
+          </div>
+
+        </div>
+      </div>
+
+      <div style="height:14px"></div>
+
+      <div class="actions">
+        <button onclick="openMaps()">OPEN IN MAPS</button>
+        <button onclick="copyMGRS()">COPY MGRS</button>
+      </div>
+
+      <div style="height:18px"></div>
+
+      <div class="map">
+        <div class="crosshair"></div>
+        <div id="mapLabel" class="map-label">1.352100 / 103.819800</div>
+      </div>
+
+    </section>
+
+
+    <!-- WEATHER -->
+    <section class="panel full">
+
+      <div class="panel-title">
+        <span>03 / Predicted Weather</span>
+        <span id="weatherLocation">POSITION LOCKED</span>
+      </div>
+
+      <div class="weather-current">
+
+        <div class="weather-main">
+          <div id="weatherTemp" class="temperature">--°</div>
+          <div id="weatherCondition" class="condition">Awaiting forecast data</div>
+        </div>
+
+        <div class="weather-stat">
+          <div class="metric-label">Feels Like</div>
+          <div id="feelsLike" class="metric-value">--</div>
+        </div>
+
+        <div class="weather-stat">
+          <div class="metric-label">Humidity</div>
+          <div id="humidity" class="metric-value">--</div>
+        </div>
+
+        <div class="weather-stat">
+          <div class="metric-label">Wind</div>
+          <div id="wind" class="metric-value">--</div>
+        </div>
+
+        <div class="weather-stat">
+          <div class="metric-label">Visibility</div>
+          <div id="visibility" class="metric-value">--</div>
+        </div>
+
+        <div class="weather-stat">
+          <div class="metric-label">Rain</div>
+          <div id="rain" class="metric-value">--</div>
+        </div>
+
+        <div class="weather-stat">
+          <div class="metric-label">Wind Direction</div>
+          <div id="windDirection" class="metric-value">--</div>
+        </div>
+
+      </div>
+
+      <div style="height:18px"></div>
+
+      <div class="panel-title">7-Day Forecast</div>
+
+      <div id="forecast" class="forecast">
+        <div class="notice">Loading forecast...</div>
+      </div>
+
+      <div style="height:14px"></div>
+
+      <div class="notice">
+        Weather data provided by Open-Meteo. Forecast accuracy depends on
+        location, model resolution and current atmospheric conditions.
+      </div>
+
+    </section>
+
+
+    <!-- ILLUMINATION -->
+    <section class="panel full">
+
+      <div class="panel-title">
+        <span>04 / Predicted Illumination</span>
+        <span>ASTRO / SOLAR</span>
+      </div>
+
+      <div class="illumination">
+
+        <div class="illum-card">
+          <div class="metric-label">Sunrise</div>
+          <strong id="sunrise">--:--</strong>
+        </div>
+
+        <div class="illum-card">
+          <div class="metric-label">Solar Noon</div>
+          <strong id="solarNoon">--:--</strong>
+        </div>
+
+        <div class="illum-card">
+          <div class="metric-label">Sunset</div>
+          <strong id="sunset">--:--</strong>
+        </div>
+
+        <div class="illum-card">
+          <div class="metric-label">Civil Dawn</div>
+          <strong id="civilDawn">--:--</strong>
+        </div>
+
+        <div class="illum-card">
+          <div class="metric-label">Civil Dusk</div>
+          <strong id="civilDusk">--:--</strong>
+        </div>
+
+        <div class="illum-card">
+          <div class="metric-label">Nautical Dawn</div>
+          <strong id="nauticalDawn">--:--</strong>
+        </div>
+
+        <div class="illum-card">
+          <div class="metric-label">Nautical Dusk</div>
+          <strong id="nauticalDusk">--:--</strong>
+        </div>
+
+        <div class="illum-card">
+          <div class="metric-label">Moonrise</div>
+          <strong id="moonrise">--:--</strong>
+        </div>
+
+        <div class="illum-card">
+          <div class="metric-label">Moonset</div>
+          <strong id="moonset">--:--</strong>
+        </div>
+
+        <div class="illum-card">
+          <div class="metric-label">Moon Phase</div>
+          <strong id="moonPhase">--</strong>
+        </div>
+
+        <div class="illum-card">
+          <div class="metric-label">Moon Illumination</div>
+          <strong id="moonIllumination">--</strong>
+        </div>
+
+        <div class="illum-card">
+          <div class="metric-label">Sun Altitude</div>
+          <strong id="sunAltitude">--</strong>
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- HISTORY -->
+    <section class="panel full">
+
+      <div class="panel-title">
+        <span>05 / Recent Coordinates</span>
+        <button class="danger" onclick="clearHistory()">CLEAR</button>
+      </div>
+
+      <div id="history" class="history">
+        <div class="notice">No recent conversions.</div>
+      </div>
+
+    </section>
+
+  </div>
+
+</main>
+
+<footer>
+  MGRS FIELD NAV • WGS84 • BUILT FOR FIELD REFERENCE
+</footer>
+
+
+<script>
+
+  let currentLat = 1.3521;
+  let currentLon = 103.8198;
+  let currentMgrs = "48NUG9470000000";
+
+
+  function showError(id, message) {
+    document.getElementById(id).textContent = message || "";
+  }
+
+
+  function updatePosition(lat, lon, mgrsValue) {
+
+    currentLat = Number(lat);
+    currentLon = Number(lon);
+    currentMgrs = mgrsValue;
+
+    document.getElementById("resultMgrs").textContent = mgrsValue;
+    document.getElementById("resultLat").textContent =
+      currentLat.toFixed(6) + "°";
+    document.getElementById("resultLon").textContent =
+      currentLon.toFixed(6) + "°";
+
+    document.getElementById("resultGrid").textContent =
+      mgrsValue.substring(0, 3);
+
+    document.getElementById("mapLabel").textContent =
+      currentLat.toFixed(6) + " / " + currentLon.toFixed(6);
+
+    loadWeather();
+    updateIllumination();
+    saveHistory();
+  }
+
+
+  function convertMGRS() {
+
+    showError("converterError", "");
+
+    try {
+
+      const input =
+        document.getElementById("mgrsInput").value.trim().toUpperCase();
+
+      if (!input) {
+        throw new Error("Enter an MGRS coordinate.");
+      }
+
+      const point = mgrs.toPoint(input);
+
+      const lon = point[0];
+      const lat = point[1];
+
+      updatePosition(lat, lon, input);
+
+    } catch (error) {
+
+      showError(
+        "converterError",
+        "INVALID MGRS COORDINATE"
+      );
+
+    }
+
+  }
+
+
+  function convertLatLon() {
+
+    showError("latlonError", "");
+
+    try {
+
+      const lat =
+        Number(document.getElementById("latInput").value);
+
+      const lon =
+        Number(document.getElementById("lonInput").value);
+
+      const precision =
+        Number(document.getElementById("precision").value);
+
+      if (
+        Number.isNaN(lat) ||
+        Number.isNaN(lon) ||
+        lat < -90 ||
+        lat > 90 ||
+        lon < -180 ||
+        lon > 180
+      ) {
+        throw new Error("Invalid latitude or longitude.");
+      }
+
+      const output =
+        mgrs.forward([lon, lat], precision);
+
+      document.getElementById("mgrsInput").value = output;
+
+      updatePosition(lat, lon, output);
+
+    } catch (error) {
+
+      showError(
+        "latlonError",
+        "INVALID LATITUDE OR LONGITUDE"
+      );
+
+    }
+
+  }
+
+
+  function useExample() {
+
+    document.getElementById("mgrsInput").value =
+      "48NUG9470000000";
+
+    convertMGRS();
+
+  }
+
+
+  function openMaps() {
+
+    const url =
+      "https://www.google.com/maps/search/?api=1&query=" +
+      encodeURIComponent(currentLat + "," + currentLon);
+
+    window.open(url, "_blank");
+
+  }
+
+
+  async function copyMGRS() {
+
+    try {
+
+      await navigator.clipboard.writeText(currentMgrs);
+
+      const button =
+        event.target;
+
+      const oldText =
+        button.textContent;
+
+      button.textContent = "COPIED";
+
+      setTimeout(() => {
+        button.textContent = oldText;
+      }, 1200);
+
+    } catch (e) {}
+
+  }
+
+
+  function weatherDescription(code) {
+
+    const map = {
+
+      0: "CLEAR SKY",
+
+      1: "MAINLY CLEAR",
+      2: "PARTLY CLOUDY",
+      3: "OVERCAST",
+
+      45: "FOG",
+      48: "DEPOSITING RIME FOG",
+
+      51: "LIGHT DRIZZLE",
+      53: "MODERATE DRIZZLE",
+      55: "DENSE DRIZZLE",
+
+      56: "LIGHT FREEZING DRIZZLE",
+      57: "DENSE FREEZING DRIZZLE",
+
+      61: "SLIGHT RAIN",
+      63: "MODERATE RAIN",
+      65: "HEAVY RAIN",
+
+      66: "LIGHT FREEZING RAIN",
+      67: "HEAVY FREEZING RAIN",
+
+      71: "SLIGHT SNOW",
+      73: "MODERATE SNOW",
+      75: "HEAVY SNOW",
+
+      77: "SNOW GRAINS",
+
+      80: "SLIGHT RAIN SHOWERS",
+      81: "MODERATE RAIN SHOWERS",
+      82: "VIOLENT RAIN SHOWERS",
+
+      85: "SLIGHT SNOW SHOWERS",
+      86: "HEAVY SNOW SHOWERS",
+
+      95: "THUNDERSTORM",
+      96: "THUNDERSTORM + HAIL",
+      99: "THUNDERSTORM + HEAVY HAIL"
+
+    };
+
+    return map[code] || "UNKNOWN";
+
+  }
+
+
+  function degToCompass(deg) {
+
+    const dirs = [
+      "N","NNE","NE","ENE",
+      "E","ESE","SE","SSE",
+      "S","SSW","SW","WSW",
+      "W","WNW","NW","NNW"
+    ];
+
+    return dirs[
+      Math.round(deg / 22.5) % 16
+    ];
+
+  }
+
+
+  async function loadWeather() {
+
+    const forecast =
+      document.getElementById("forecast");
+
+    forecast.innerHTML =
+      '<div class="notice">LOADING FORECAST...</div>';
+
+    const url =
+      "https://api.open-meteo.com/v1/forecast?" +
+      "latitude=" + encodeURIComponent(currentLat) +
+      "&longitude=" + encodeURIComponent(currentLon) +
+      "&current=" +
+      "temperature_2m," +
+      "relative_humidity_2m," +
+      "apparent_temperature," +
+      "precipitation," +
+      "rain," +
+      "weather_code," +
+      "wind_speed_10m," +
+      "wind_direction_10m," +
+      "visibility" +
+      "&daily=" +
+      "weather_code," +
+      "temperature_2m_max," +
+      "temperature_2m_min," +
+      "precipitation_probability_max," +
+      "wind_speed_10m_max," +
+      "sunrise," +
+      "sunset" +
+      "&forecast_days=7" +
+      "&timezone=auto";
+
+    try {
+
+      const response =
+        await fetch(url);
+
+      if (!response.ok) {
+        throw new Error("Weather request failed.");
+      }
+
+      const data =
+        await response.json();
+
+      const c =
+        data.current;
+
+      document.getElementById("weatherTemp").textContent =
+        Math.round(c.temperature_2m) + "°C";
+
+      document.getElementById("weatherCondition").textContent =
+        weatherDescription(c.weather_code);
+
+      document.getElementById("feelsLike").textContent =
+        Math.round(c.apparent_temperature) + "°C";
+
+      document.getElementById("humidity").textContent =
+        c.relative_humidity_2m + "%";
+
+      document.getElementById("wind").textContent =
+        Math.round(c.wind_speed_10m) + " km/h";
+
+      document.getElementById("windDirection").textContent =
+        Math.round(c.wind_direction_10m) +
+        "° " +
+        degToCompass(c.wind_direction_10m);
+
+      document.getElementById("visibility").textContent =
+        (c.visibility / 1000).toFixed(1) + " km";
+
+      document.getElementById("rain").textContent =
+        Number(c.rain).toFixed(1) + " mm";
+
+      document.getElementById("weatherLocation").textContent =
+        currentLat.toFixed(4) +
+        " / " +
+        currentLon.toFixed(4);
+
+      renderForecast(data.daily);
+
+    } catch (error) {
+
+      forecast.innerHTML =
+        '<div class="notice">WEATHER DATA UNAVAILABLE</div>';
+
+    }
+
+  }
+
+
+  function renderForecast(daily) {
+
+    const container =
+      document.getElementById("forecast");
+
+    container.innerHTML = "";
+
+    for (let i = 0; i < daily.time.length; i++) {
+
+      const date =
+        new Date(daily.time[i] + "T12:00:00");
+
+      const card =
+        document.createElement("div");
+
+      card.className =
+        "forecast-day";
+
+      card.innerHTML = `
+
+        <div class="forecast-date">
+          ${date.toLocaleDateString([], {
+            weekday: "short",
+            month: "short",
+            day: "numeric"
+          })}
+        </div>
+
+        <div class="condition">
+          ${weatherDescription(daily.weather_code[i])}
+        </div>
+
+        <div class="forecast-temp">
+          ${Math.round(daily.temperature_2m_max[i])}° /
+          ${Math.round(daily.temperature_2m_min[i])}°
+        </div>
+
+        <div class="forecast-rain">
+          RAIN ${daily.precipitation_probability_max[i]}%
+        </div>
+
+        <div class="forecast-rain">
+          WIND ${Math.round(daily.wind_speed_10m_max[i])} km/h
+        </div>
+
+      `;
+
+      container.appendChild(card);
+
+    }
+
+  }
+
+
+  function formatTime(date) {
+
+    if (!date) {
+      return "--:--";
+    }
+
+    return date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+  }
+
+
+  function updateIllumination() {
+
+    try {
+
+      const now =
+        new Date();
+
+      const times =
+        SunCalc.getTimes(
+          now,
+          currentLat,
+          currentLon
+        );
+
+      const moonTimes =
+        SunCalc.getMoonTimes(
+          now,
+          currentLat,
+          currentLon
+        );
+
+      const moon =
+        SunCalc.getMoonIllumination(
+          now
+        );
+
+      const sun =
+        SunCalc.getPosition(
+          now,
+          currentLat,
+          currentLon
+        );
+
+      document.getElementById("sunrise").textContent =
+        formatTime(times.sunrise);
+
+      document.getElementById("solarNoon").textContent =
+        formatTime(times.solarNoon);
+
+      document.getElementById("sunset").textContent =
+        formatTime(times.sunset);
+
+      document.getElementById("civilDawn").textContent =
+        formatTime(times.dawn);
+
+      document.getElementById("civilDusk").textContent =
+        formatTime(times.dusk);
+
+      document.getElementById("nauticalDawn").textContent =
+        formatTime(times.nauticalDawn);
+
+      document.getElementById("nauticalDusk").textContent =
+        formatTime(times.nauticalDusk);
+
+      document.getElementById("moonrise").textContent =
+        formatTime(moonTimes.rise);
+
+      document.getElementById("moonset").textContent =
+        formatTime(moonTimes.set);
+
+      document.getElementById("moonIllumination").textContent =
+        Math.round(moon.fraction * 100) + "%";
+
+      document.getElementById("moonPhase").textContent =
+        moonPhaseName(moon.phase);
+
+      document.getElementById("sunAltitude").textContent =
+        (sun.altitude * 180 / Math.PI).toFixed(1) + "°";
+
+    } catch (error) {
+
+      console.error(error);
+
+    }
+
+  }
+
+
+  function moonPhaseName(phase) {
+
+    if (phase < 0.03 || phase > 0.97)
+      return "NEW MOON";
+
+    if (phase < 0.22)
+      return "WAXING CRESCENT";
+
+    if (phase < 0.28)
+      return "FIRST QUARTER";
+
+    if (phase < 0.47)
+      return "WAXING GIBBOUS";
+
+    if (phase < 0.53)
+      return "FULL MOON";
+
+    if (phase < 0.72)
+      return "WANING GIBBOUS";
+
+    if (phase < 0.78)
+      return "LAST QUARTER";
+
+    return "WANING CRESCENT";
+
+  }
+
+
+  function saveHistory() {
+
+    const existing =
+      JSON.parse(
+        localStorage.getItem("mgrsHistory") || "[]"
+      );
+
+    const item = {
+      mgrs: currentMgrs,
+      lat: currentLat,
+      lon: currentLon,
+      time: new Date().toISOString()
+    };
+
+    const filtered =
+      existing.filter(
+        x => x.mgrs !== currentMgrs
+      );
+
+    filtered.unshift(item);
+
+    localStorage.setItem(
+      "mgrsHistory",
+      JSON.stringify(filtered.slice(0, 10))
+    );
+
+    renderHistory();
+
+  }
+
+
+  function renderHistory() {
+
+    const container =
+      document.getElementById("history");
+
+    const items =
+      JSON.parse(
+        localStorage.getItem("mgrsHistory") || "[]"
+      );
+
+    if (!items.length) {
+
+      container.innerHTML =
+        '<div class="notice">No recent conversions.</div>';
+
+      return;
+
+    }
+
+    container.innerHTML = "";
+
+    items.forEach(item => {
+
+      const row =
+        document.createElement("div");
+
+      row.className =
+        "history-item";
+
+      row.onclick = () => {
+
+        document.getElementById("mgrsInput").value =
+          item.mgrs;
+
+        currentLat = item.lat;
+        currentLon = item.lon;
+        currentMgrs = item.mgrs;
+
+        updatePosition(
+          item.lat,
+          item.lon,
+          item.mgrs
+        );
+
+      };
+
+      const date =
+        new Date(item.time);
+
+      row.innerHTML = `
+
+        <div>
+          <div class="history-coord">
+            ${item.mgrs}
+          </div>
+
+          <div class="history-type">
+            ${Number(item.lat).toFixed(5)} /
+            ${Number(item.lon).toFixed(5)}
+          </div>
+        </div>
+
+        <div class="history-type">
+          ${date.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit"
+          })}
+        </div>
+
+      `;
+
+      container.appendChild(row);
+
+    });
+
+  }
+
+
+  function clearHistory() {
+
+    localStorage.removeItem("mgrsHistory");
+
+    renderHistory();
+
+  }
+
+
+  // INITIALISE
+
+  window.addEventListener("load", () => {
+
+    renderHistory();
+
+    updateIllumination();
+
+    loadWeather();
+
+  });
+
+</script>
+
+</body>
+</html>
